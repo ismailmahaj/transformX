@@ -107,9 +107,40 @@ app.use((err, req, res, next) => {
   res.status(status).json(payload);
 });
 
+async function initDatabase() {
+  const { pool } = require("./db/pool");
+  const fs = require("fs");
+  const path = require("path");
+
+  try {
+    // Create tables (idempotent thanks to IF NOT EXISTS / ALTER IF EXISTS)
+    console.log("Creating tables...");
+    const schema = fs.readFileSync(path.join(__dirname, "db/schema.sql"), "utf8");
+    await pool.query(schema);
+    console.log("✅ Tables ready");
+
+    // Seed only if database looks empty
+    const { rows } = await pool.query("SELECT COUNT(*) FROM workouts");
+    const count = parseInt(rows[0]?.count ?? "0", 10);
+
+    if (count === 0) {
+      console.log("Seeding database...");
+      const { run } = require("./db/seed");
+      await run();
+      console.log("✅ Database seeded");
+    } else {
+      console.log(`✅ Database already has ${count} workouts`);
+    }
+  } catch (err) {
+    console.error("DB init error:", err?.message ?? err);
+  }
+}
+
 const port = Number(process.env.PORT || 5001);
-app.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`API listening on port ${port}`);
+initDatabase().then(() => {
+  app.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`API listening on port ${port}`);
+  });
 });
 
