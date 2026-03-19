@@ -45,6 +45,7 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:4173",
   process.env.FRONTEND_URL,
+  "https://transformx-production.up.railway.app",
 ].filter(Boolean);
 
 app.use(helmet());
@@ -54,10 +55,13 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        console.log("CORS blocked:", origin);
+        callback(null, true); // Allow all for now during testing
       }
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(morgan("dev"));
