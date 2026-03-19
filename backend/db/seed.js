@@ -1177,10 +1177,15 @@ async function run() {
   console.log("Seeding meals...");
   const mealCount = await seedMeals();
   console.log(`\n✅ Seed complete! ${workoutCount} workouts, ${mealCount} meals inserted`);
-  await pool.end();
+  const isStandalone = require.main === module;
+  if (isStandalone) await pool.end();
 }
 
-run().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (require.main === module) {
+  run().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+module.exports = { run };
