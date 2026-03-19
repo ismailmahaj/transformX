@@ -18,6 +18,7 @@ function signToken(user) {
       userId: user.id,
       email: user.email,
       name: user.name ?? null,
+      is_admin: Boolean(user.is_admin),
     },
     secret,
     { expiresIn }
