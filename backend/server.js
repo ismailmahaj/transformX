@@ -132,7 +132,11 @@ async function initDatabase() {
       console.log(`✅ Database already has ${count} workouts`);
     }
   } catch (err) {
-    console.error("DB init error:", err?.message ?? err);
+    console.error("DB init error FULL:", err);
+    console.error("DB_HOST:", process.env.DB_HOST);
+    console.error("DB_NAME:", process.env.DB_NAME);
+    console.error("DB_USER:", process.env.DB_USER);
+    console.error("DB_SSL:", process.env.DB_SSL);
   }
 }
 
