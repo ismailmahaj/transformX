@@ -19,6 +19,7 @@ const {
   usersRoutes,
   shoppingRoutes,
   coachRoutes,
+  plannerRoutes,
 } = require("./routes");
 const adminRoutes = require("./routes/admin");
 
@@ -70,6 +71,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use("/api/", apiLimiter);
 app.use("/api/auth", authLimiter);
 app.use("/api/coach", aiLimiter);
+app.use("/api/planner", aiLimiter);
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
@@ -85,6 +87,7 @@ app.use("/api/nutrition", verifyToken, nutritionRoutes);
 app.use("/api/users", verifyToken, usersRoutes);
 app.use("/api/shopping", verifyToken, shoppingRoutes);
 app.use("/api/coach", verifyToken, coachRoutes);
+app.use("/api/planner", verifyToken, plannerRoutes);
 app.use("/api/admin", verifyToken, verifyAdmin, adminRoutes);
 
 // 404
@@ -119,17 +122,31 @@ async function initDatabase() {
     await pool.query(schema);
     console.log("✅ Tables ready");
 
-    // Seed only if database looks empty
-    const { rows } = await pool.query("SELECT COUNT(*) FROM workouts");
-    const count = parseInt(rows[0]?.count ?? "0", 10);
+    // Seed if database looks empty OR if new meal programmes are missing
+    const [workoutsRes, mealsRes] = await Promise.all([
+      pool.query("SELECT COUNT(*)::int AS c FROM workouts"),
+      pool.query(
+        `SELECT
+           COUNT(*) FILTER (WHERE meal_program = 'standard')::int AS standard,
+           COUNT(*) FILTER (WHERE meal_program = 'prise_de_masse')::int AS prise_de_masse,
+           COUNT(*) FILTER (WHERE meal_program = 'diabetique')::int AS diabetique
+         FROM meals`
+      ),
+    ]);
 
-    if (count === 0) {
-      console.log("Seeding database...");
+    const workoutsCount = workoutsRes.rows[0]?.c ?? 0;
+    const mealProgramsMissing =
+      (mealsRes.rows[0]?.standard ?? 0) === 0 ||
+      (mealsRes.rows[0]?.prise_de_masse ?? 0) === 0 ||
+      (mealsRes.rows[0]?.diabetique ?? 0) === 0;
+
+    if (workoutsCount === 0 || mealProgramsMissing) {
+      console.log("Seeding database (initialisation ou programmes manquants)...");
       const { run } = require("./db/seed");
       await run();
       console.log("✅ Database seeded");
     } else {
-      console.log(`✅ Database already has ${count} workouts`);
+      console.log(`✅ DB prête: ${workoutsCount} workouts, programmes meals OK`);
     }
   } catch (err) {
     console.error("DB init error FULL:", err);

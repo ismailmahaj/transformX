@@ -4,6 +4,9 @@ export interface WorkoutExercise {
   reps?: number | string;
   time?: string;
   rest_seconds?: number;
+  note?: string;
+  video_id?: string | null;
+  youtube_url?: string | null;
 }
 
 export interface Workout {

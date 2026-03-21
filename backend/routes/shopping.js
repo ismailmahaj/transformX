@@ -20,6 +20,13 @@ async function getCurrentDayNumber(userId) {
   return Math.min(180, Math.max(1, offset + 1));
 }
 
+function mapDietaryProfileToMealProgram(dietaryProfile) {
+  const dp = Array.isArray(dietaryProfile) ? dietaryProfile : [];
+  if (dp.includes("prise_de_masse")) return "prise_de_masse";
+  if (dp.includes("diabetique")) return "diabetique";
+  return "standard";
+}
+
 const CATEGORY_KEYWORDS = {
   "🥩 Viandes & Poissons": ["poulet", "bœuf", "boeuf", "saumon", "thon", "dinde", "crevettes", "cabillaud", "steak", "blanc de poulet", "bœuf haché", "boeuf haché"],
   "🥚 Œufs & Produits Laitiers": ["œuf", "oeuf", "yaourt", "yogurt", "fromage", "lait", "feta", "parmesan"],
@@ -112,7 +119,9 @@ router.get("/", async (req, res, next) => {
     if (!startDay) return res.status(404).json({ error: "Utilisateur introuvable" });
 
     const endDay = Math.min(180, startDay + weeks * 7 - 1);
-    const allMeals = await listMealsByDayRange(startDay, endDay);
+    const user = await getUserById(userId);
+    const mealProgram = mapDietaryProfileToMealProgram(user?.dietary_profile);
+    const allMeals = await listMealsByDayRange(startDay, endDay, mealProgram);
 
     const allIngredients = aggregateIngredients(allMeals);
     const categories = buildCategories(allIngredients);
@@ -134,6 +143,7 @@ router.get("/", async (req, res, next) => {
     return res.json({
       period: `Semaine 1-${weeks}`,
       days_covered: [startDay, endDay],
+      meal_program: mealProgram,
       categories,
       by_week,
     });

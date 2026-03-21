@@ -1,6 +1,7 @@
 const express = require("express");
 const { z } = require("zod");
 const foods = require("../db/foods");
+const { getUserById } = require("../db/queries/users");
 const {
   getNutritionLogsByDate,
   getTotalsByDate,
@@ -16,27 +17,44 @@ const router = express.Router();
 
 const MEAL_TYPES = ["petit-dejeuner", "dejeuner", "diner", "collation"];
 
-function getTargets(isTrainingDay) {
-  return {
-    calories: isTrainingDay ? 2200 : 1900,
-    proteins_g: 160,
-    carbs_g: isTrainingDay ? 250 : 180,
-    fats_g: 60,
-    water_ml: 3000,
-  };
+function getTargetsFromDietaryProfile(user) {
+  const dp = Array.isArray(user?.dietary_profile) ? user.dietary_profile : [];
+  const goal = user?.goal ?? null;
+
+  if (dp.includes("prise_de_masse")) {
+    return { calories: 3200, proteins_g: 200, carbs_g: 350, fats_g: 100, water_ml: 3000 };
+  }
+  if (dp.includes("diabetique")) {
+    return { calories: 1800, proteins_g: 150, carbs_g: 80, fats_g: 70, water_ml: 3000 };
+  }
+  if (dp.includes("seche")) {
+    return { calories: 1600, proteins_g: 170, carbs_g: 100, fats_g: 55, water_ml: 3000 };
+  }
+
+  // Standard: basé sur l'objectif (comme auparavant côté UI)
+  if (goal === "Prendre du muscle") {
+    return { calories: 2500, proteins_g: 180, carbs_g: 280, fats_g: 80, water_ml: 3000 };
+  }
+  if (goal === "Les deux") {
+    return { calories: 2100, proteins_g: 170, carbs_g: 220, fats_g: 70, water_ml: 3000 };
+  }
+
+  return { calories: 1800, proteins_g: 160, carbs_g: 180, fats_g: 60, water_ml: 3000 };
 }
 
 router.get("/today", async (req, res, next) => {
   try {
     const userId = req.user?.userId;
     const date = toIsoDate(new Date());
+    const user = await getUserById(userId);
+    if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
     const [logs, totals, targetsRow] = await Promise.all([
       getNutritionLogsByDate(userId, date),
       getTotalsByDate(userId, date),
       getDailyTargets(userId, date),
     ]);
     const isTrainingDay = targetsRow?.is_training_day ?? false;
-    const targets = getTargets(isTrainingDay);
+    const targets = getTargetsFromDietaryProfile(user);
     const waterLogged = targetsRow?.water_ml_logged ?? 0;
     return res.json({
       date,
@@ -103,9 +121,11 @@ router.get("/targets", async (req, res, next) => {
   try {
     const userId = req.user?.userId;
     const date = req.query.date ?? toIsoDate(new Date());
+    const user = await getUserById(userId);
+    if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
     const row = await getDailyTargets(userId, date);
     const isTrainingDay = row?.is_training_day ?? false;
-    const targets = getTargets(isTrainingDay);
+    const targets = getTargetsFromDietaryProfile(user);
     return res.json({
       date,
       is_training_day: isTrainingDay,
@@ -125,13 +145,15 @@ router.post("/targets", async (req, res, next) => {
     });
     const body = schema.parse(req.body);
     const userId = req.user?.userId;
+    const user = await getUserById(userId);
+    if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
     const date = body.date ?? toIsoDate(new Date());
     const existing = await getDailyTargets(userId, date);
     const row = await upsertDailyTargets(userId, date, {
       isTrainingDay: body.is_training_day,
       waterMlLogged: existing?.water_ml_logged ?? 0,
     });
-    return res.json({ targets: row, targets_values: getTargets(row.is_training_day) });
+    return res.json({ targets: row, targets_values: getTargetsFromDietaryProfile(user) });
   } catch (err) {
     if (err?.name === "ZodError") return res.status(400).json({ error: "Invalid payload", details: err.errors });
     return next(err);

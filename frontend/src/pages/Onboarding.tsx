@@ -51,18 +51,26 @@ function CardButton(props: {
   );
 }
 
+type WorkType = "bureau" | "domicile" | "variable" | "nuit" | "sans_emploi";
+type PreferredWorkoutTime = "matin" | "midi" | "soir";
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const setUser = useAuthStore((s) => s.setUser);
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
 
   const [heightCm, setHeightCm] = useState<number | "">("");
   const [weightKg, setWeightKg] = useState<number | "">("");
   const [goal, setGoal] = useState<GoalOption | null>(null);
   const [experienceLevel, setExperienceLevel] = useState<ExperienceOption | null>(null);
+  const [dietaryProfile, setDietaryProfile] = useState<string[]>(["standard"]);
+  const [wakeTime, setWakeTime] = useState("07:00");
+  const [sleepTime, setSleepTime] = useState("23:00");
+  const [workType, setWorkType] = useState<WorkType>("bureau");
+  const [preferredWorkoutTime, setPreferredWorkoutTime] = useState<PreferredWorkoutTime>("soir");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +131,7 @@ export default function Onboarding() {
 
   const goBack = () => {
     setError(null);
-    setStep((s) => (s === 1 ? 1 : ((s - 1) as 1 | 2 | 3 | 4)));
+    setStep((s) => (s === 1 ? 1 : ((s - 1) as 1 | 2 | 3 | 4 | 5 | 6)));
   };
 
   const canSubmit =
@@ -131,8 +139,32 @@ export default function Onboarding() {
     weightKg !== "" &&
     goal != null &&
     experienceLevel != null &&
+    dietaryProfile.length > 0 &&
     typeof heightCm === "number" &&
     typeof weightKg === "number";
+
+  const dietaryOptions: Array<{ key: string; icon: string; title: string; description: string }> = [
+    { key: "diabetique", icon: "🩺", title: "Diabétique", description: "Programme low glycémique" },
+    { key: "vegetarien", icon: "🌱", title: "Végétarien", description: "Sans viande" },
+    { key: "vegan", icon: "🌿", title: "Vegan", description: "Sans produits animaux" },
+    { key: "sans_gluten", icon: "🌾", title: "Sans Gluten", description: "Intolérance au gluten" },
+    { key: "sans_lactose", icon: "🥛", title: "Sans Lactose", description: "Intolérance au lactose" },
+    { key: "hypertension", icon: "💊", title: "Hypertension", description: "Faible en sel" },
+    { key: "prise_de_masse", icon: "💪", title: "Prise de masse", description: "Recettes hypercaloriques" },
+    { key: "seche", icon: "🔥", title: "Sèche", description: "Low carb, haute protéine" },
+    { key: "standard", icon: "✅", title: "Aucune restriction", description: "Programme standard" },
+  ];
+
+  const toggleDietary = (key: string) => {
+    setDietaryProfile((prev) => {
+      if (key === "standard") return ["standard"];
+
+      const withoutStandard = prev.filter((k) => k !== "standard");
+      const exists = withoutStandard.includes(key);
+      const next = exists ? withoutStandard.filter((k) => k !== key) : [...withoutStandard, key];
+      return next.length ? next : ["standard"];
+    });
+  };
 
   const handleSubmit = async () => {
     if (!user || !isAuthenticated) {
@@ -153,6 +185,11 @@ export default function Onboarding() {
         weight_start_kg: weightKg,
         goal,
         experience_level: experienceLevel,
+        dietary_profile: dietaryProfile,
+        wake_time: wakeTime,
+        sleep_time: sleepTime,
+        work_type: workType,
+        preferred_workout_time: preferredWorkoutTime,
       };
 
       const { data } = await api.put<{ user: unknown }>("/users/profile", payload);
@@ -174,7 +211,7 @@ export default function Onboarding() {
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
       <div className="w-full max-w-[480px] pb-8">
         <div className="mt-6">
-          <OnboardingProgress step={step} total={4} />
+          <OnboardingProgress step={step} total={6} />
         </div>
 
         <div className="mt-6 overflow-hidden">
@@ -190,7 +227,7 @@ export default function Onboarding() {
                   Bienvenue dans ton programme de transformation ! 💪
                 </h2>
                 <p className="text-sm text-gray-300 text-center mt-2">
-                  On va personnaliser ton programme en 4 étapes
+                  On va personnaliser ton programme en 6 étapes
                 </p>
 
                 <div className="mt-6 rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] p-4">
@@ -405,12 +442,13 @@ export default function Onboarding() {
                       setError("Choisis ton niveau pour continuer.");
                       return;
                     }
-                    handleSubmit();
+                    setError(null);
+                    setStep(5);
                   }}
-                  disabled={loading || !canSubmit}
+                  disabled={loading || !experienceLevel}
                   className="mt-6 w-full rounded-2xl bg-primary px-4 py-3 text-white font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
-                  {loading ? "Création de ton programme..." : "Lancer mon programme 🚀"}
+                  {loading ? "Chargement..." : "Choisir tes restrictions →"}
                 </button>
 
                 {isProfileComplete ? (
@@ -418,6 +456,160 @@ export default function Onboarding() {
                     Tu es déjà configuré. On te ramène au tableau de bord…
                   </div>
                 ) : null}
+              </div>
+            </div>
+
+            {/* Step 5 */}
+            <div className="min-w-full px-0">
+              <div className="rounded-2xl border border-[#1a1a1a] bg-[#0f0f0f] p-5">
+                <h2 className="text-xl font-bold text-white">
+                  As-tu des restrictions alimentaires ?
+                </h2>
+                <p className="text-sm text-gray-300 mt-1">Pour personnaliser tes recettes</p>
+
+                {error ? <div className="mt-4 text-sm text-red-400">{error}</div> : null}
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  {dietaryOptions.map((opt) => {
+                    const selected = dietaryProfile.includes(opt.key);
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => {
+                          setError(null);
+                          toggleDietary(opt.key);
+                        }}
+                        className={`text-left rounded-2xl border p-3 transition-all duration-200 ${
+                          selected
+                            ? "border-primary/60 bg-primary/10 shadow-[0_0_0_4px_rgba(249,115,22,0.10)]"
+                            : "border-[#1a1a1a] bg-[#0a0a0a] hover:border-[#2a2a2a]"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="text-2xl leading-none">{opt.icon}</div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-white truncate">{opt.title}</div>
+                            <div className="text-xs text-gray-300 mt-1">{opt.description}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="flex-1 rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-3 text-white font-semibold hover:bg-[#111] transition-colors"
+                    disabled={loading}
+                  >
+                    ← Retour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setStep(6);
+                    }}
+                    disabled={loading || !canSubmit}
+                    className="flex-1 rounded-xl bg-primary px-3 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {loading ? "Chargement..." : "Organiser ta journée →"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 6 */}
+            <div className="min-w-full px-0">
+              <div className="rounded-2xl border border-[#1a1a1a] bg-[#0f0f0f] p-5">
+                <h2 className="text-xl font-bold text-white">Tes horaires de vie</h2>
+                <p className="text-sm text-gray-300 mt-1">
+                  Pour planifier tes entraînements au meilleur moment
+                </p>
+
+                <div className="mt-5 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="text-sm text-gray-400">Heure de réveil</span>
+                      <input type="time" value={wakeTime} onChange={(e) => setWakeTime(e.target.value)} className="mt-2 w-full rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-2 text-white" />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm text-gray-400">Heure de coucher</span>
+                      <input type="time" value={sleepTime} onChange={(e) => setSleepTime(e.target.value)} className="mt-2 w-full rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-2 text-white" />
+                    </label>
+                  </div>
+
+                  <div>
+                    <span className="text-sm text-gray-400">Type de travail</span>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {[
+                        { key: "bureau", label: "🏢 Bureau" },
+                        { key: "domicile", label: "🏠 Domicile" },
+                        { key: "variable", label: "🔄 Variable" },
+                        { key: "nuit", label: "🌙 Nuit" },
+                        { key: "sans_emploi", label: "🎯 Sans emploi" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setWorkType(opt.key as WorkType)}
+                          className={`rounded-xl border px-3 py-2 text-sm ${
+                            workType === opt.key ? "border-primary bg-primary/10 text-primary" : "border-[#1a1a1a] text-gray-300"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-sm text-gray-400">Préférence entraînement</span>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {[
+                        { key: "matin", label: "🌅 Matin" },
+                        { key: "midi", label: "☀️ Midi" },
+                        { key: "soir", label: "🌆 Soir" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setPreferredWorkoutTime(opt.key as PreferredWorkoutTime)}
+                          className={`rounded-xl border px-3 py-2 text-sm ${
+                            preferredWorkoutTime === opt.key ? "border-primary bg-primary/10 text-primary" : "border-[#1a1a1a] text-gray-300"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={goBack}
+                    className="flex-1 rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] px-3 py-3 text-white font-semibold hover:bg-[#111] transition-colors"
+                    disabled={loading}
+                  >
+                    ← Retour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      handleSubmit();
+                    }}
+                    disabled={loading || !canSubmit}
+                    className="flex-1 rounded-xl bg-primary px-3 py-3 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {loading ? "Lancement..." : "Lancer mon programme 🚀"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

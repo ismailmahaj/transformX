@@ -19,6 +19,20 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS dietary_profile TEXT[] DEFAULT '{}'::text[];
+ALTER TABLE users ADD COLUMN IF NOT EXISTS allergies TEXT[] DEFAULT '{}'::text[];
+ALTER TABLE users ADD COLUMN IF NOT EXISTS wake_time TEXT DEFAULT '07:00';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sleep_time TEXT DEFAULT '23:00';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS work_start TEXT DEFAULT '09:00';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS work_end TEXT DEFAULT '17:00';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS commute_minutes INTEGER DEFAULT 30;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS has_family BOOLEAN DEFAULT FALSE;
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS work_type TEXT DEFAULT 'bureau'
+CHECK (work_type IN ('bureau', 'domicile', 'variable', 'nuit', 'sans_emploi'));
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS preferred_workout_time TEXT DEFAULT 'soir'
+CHECK (preferred_workout_time IN ('matin', 'midi', 'soir'));
 
 -- WORKOUTS (program template)
 CREATE TABLE IF NOT EXISTS workouts (
@@ -59,6 +73,24 @@ ALTER TABLE meals
 ADD COLUMN IF NOT EXISTS prep_time_minutes INTEGER DEFAULT 10,
 ADD COLUMN IF NOT EXISTS difficulty TEXT DEFAULT 'Facile',
 ADD COLUMN IF NOT EXISTS macros JSONB DEFAULT '{}'::jsonb;
+
+-- PROGRAMMES ALIMENTAIRES
+ALTER TABLE meals
+ADD COLUMN IF NOT EXISTS meal_program TEXT NOT NULL DEFAULT 'standard'
+CHECK (meal_program IN ('standard', 'prise_de_masse', 'diabetique'));
+
+-- Contrainte unique: (day_number, type, meal_program)
+ALTER TABLE meals
+DROP CONSTRAINT IF EXISTS meals_day_number_type_key;
+
+DO $$
+BEGIN
+  ALTER TABLE meals
+  ADD CONSTRAINT meals_day_program_type_unique
+  UNIQUE (day_number, type, meal_program);
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 -- USER PROGRESS (daily logs)
 CREATE TABLE IF NOT EXISTS user_progress (

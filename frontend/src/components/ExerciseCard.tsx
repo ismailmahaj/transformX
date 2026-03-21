@@ -5,6 +5,7 @@ interface ExerciseCardProps {
   index: number;
   checked: boolean;
   onToggle: () => void;
+  onOpenVideo?: () => void;
 }
 
 function formatSetsReps(exercise: WorkoutExercise): string {
@@ -13,10 +14,11 @@ function formatSetsReps(exercise: WorkoutExercise): string {
   return `${sets} × ${reps}`;
 }
 
-export function ExerciseCard({ exercise, index, checked, onToggle }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, index, checked, onToggle, onOpenVideo }: ExerciseCardProps) {
   const name = exercise.name ?? "Exercice";
   const restSec = exercise.rest_seconds ?? 0;
   const setsReps = formatSetsReps(exercise);
+  const hasVideo = Boolean(exercise.video_id);
 
   return (
     <div
@@ -43,6 +45,15 @@ export function ExerciseCard({ exercise, index, checked, onToggle }: ExerciseCar
           <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-gray-400">
             <span>{setsReps}</span>
             {restSec > 0 && <span>Repos : {restSec} s</span>}
+            {hasVideo && onOpenVideo && (
+              <button
+                type="button"
+                onClick={onOpenVideo}
+                className="text-xs text-gray-500 hover:text-primary transition-colors"
+              >
+                ▶ Démo
+              </button>
+            )}
           </div>
         </div>
         <label className="flex items-center gap-2 shrink-0 cursor-pointer">

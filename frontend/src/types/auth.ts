@@ -6,6 +6,16 @@ export interface User {
   weight_start_kg: number | null;
   goal: string | null;
   is_admin?: boolean;
+  dietary_profile?: string[];
+  allergies?: string[];
+  wake_time?: string;
+  sleep_time?: string;
+  work_start?: string;
+  work_end?: string;
+  work_type?: "bureau" | "domicile" | "variable" | "nuit" | "sans_emploi";
+  commute_minutes?: number;
+  has_family?: boolean;
+  preferred_workout_time?: "matin" | "midi" | "soir";
   created_at?: string;
 }
 

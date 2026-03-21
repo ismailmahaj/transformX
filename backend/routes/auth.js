@@ -62,6 +62,16 @@ router.post("/register", async (req, res, next) => {
       weight_start_kg: user.weight_start_kg,
       goal: user.goal,
       is_admin: Boolean(user.is_admin),
+      dietary_profile: user.dietary_profile ?? [],
+      allergies: user.allergies ?? [],
+      wake_time: user.wake_time,
+      sleep_time: user.sleep_time,
+      work_start: user.work_start,
+      work_end: user.work_end,
+      work_type: user.work_type,
+      commute_minutes: user.commute_minutes,
+      has_family: user.has_family,
+      preferred_workout_time: user.preferred_workout_time,
       created_at: user.created_at,
     };
     return res.status(201).json({ token, user: safeUser });
@@ -95,6 +105,16 @@ router.post("/login", async (req, res, next) => {
       weight_start_kg: userRow.weight_start_kg,
       goal: userRow.goal,
       is_admin: Boolean(userRow.is_admin),
+      dietary_profile: userRow.dietary_profile ?? [],
+      allergies: userRow.allergies ?? [],
+      wake_time: userRow.wake_time,
+      sleep_time: userRow.sleep_time,
+      work_start: userRow.work_start,
+      work_end: userRow.work_end,
+      work_type: userRow.work_type,
+      commute_minutes: userRow.commute_minutes,
+      has_family: userRow.has_family,
+      preferred_workout_time: userRow.preferred_workout_time,
       created_at: userRow.created_at,
     };
 

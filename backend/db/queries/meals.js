@@ -1,11 +1,11 @@
 const { pool } = require("../pool");
 
-async function listMealsByDay(dayNumber) {
+async function listMealsByDay(dayNumber, mealProgram = "standard") {
   const { rows } = await pool.query(
     `
-    SELECT id, day_number, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
+    SELECT id, day_number, meal_program, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
     FROM meals
-    WHERE day_number = $1
+    WHERE day_number = $1 AND meal_program = $2
     ORDER BY
       CASE type
         WHEN 'breakfast' THEN 1
@@ -15,17 +15,17 @@ async function listMealsByDay(dayNumber) {
         ELSE 5
       END ASC
     `,
-    [dayNumber]
+    [dayNumber, mealProgram]
   );
   return rows;
 }
 
-async function listMealsByDayRange(startDay, endDay) {
+async function listMealsByDayRange(startDay, endDay, mealProgram = "standard") {
   const { rows } = await pool.query(
     `
-    SELECT id, day_number, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
+    SELECT id, day_number, meal_program, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
     FROM meals
-    WHERE day_number >= $1 AND day_number <= $2
+    WHERE day_number >= $1 AND day_number <= $2 AND meal_program = $3
     ORDER BY day_number ASC,
       CASE type
         WHEN 'breakfast' THEN 1
@@ -35,17 +35,27 @@ async function listMealsByDayRange(startDay, endDay) {
         ELSE 5
       END ASC
     `,
-    [startDay, endDay]
+    [startDay, endDay, mealProgram]
   );
   return rows;
 }
 
-async function upsertMeal({ dayNumber, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros }) {
+async function upsertMeal({
+  dayNumber,
+  type,
+  mealProgram = "standard",
+  name,
+  ingredients,
+  recipe,
+  prep_time_minutes,
+  difficulty,
+  macros,
+}) {
   const { rows } = await pool.query(
     `
-    INSERT INTO meals (day_number, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros)
-    VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8::jsonb)
-    ON CONFLICT (day_number, type)
+    INSERT INTO meals (day_number, type, meal_program, name, ingredients, recipe, prep_time_minutes, difficulty, macros)
+    VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9::jsonb)
+    ON CONFLICT (day_number, type, meal_program)
     DO UPDATE SET
       name = EXCLUDED.name,
       ingredients = EXCLUDED.ingredients,
@@ -53,16 +63,17 @@ async function upsertMeal({ dayNumber, type, name, ingredients, recipe, prep_tim
       prep_time_minutes = EXCLUDED.prep_time_minutes,
       difficulty = EXCLUDED.difficulty,
       macros = EXCLUDED.macros
-    RETURNING id, day_number, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
+    RETURNING id, day_number, meal_program, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
     `,
     [
       dayNumber,
       type,
+      mealProgram,
       name,
       JSON.stringify(ingredients ?? []),
       recipe ?? null,
       prep_time_minutes ?? 10,
-      difficulty ?? 'Facile',
+      difficulty ?? "Facile",
       JSON.stringify(macros ?? {}),
     ]
   );
@@ -72,7 +83,7 @@ async function upsertMeal({ dayNumber, type, name, ingredients, recipe, prep_tim
 async function getMealById(mealId) {
   const { rows } = await pool.query(
     `
-    SELECT id, day_number, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
+    SELECT id, day_number, meal_program, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
     FROM meals
     WHERE id = $1
     `,
@@ -84,9 +95,9 @@ async function getMealById(mealId) {
 async function listMealsAdmin(filters = {}) {
   const { dayMin, dayMax, type, search } = filters;
   let query = `
-    SELECT id, day_number, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
+    SELECT id, day_number, meal_program, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros
     FROM meals
-    WHERE 1=1
+    WHERE 1=1 AND meal_program = 'standard'
   `;
   const params = [];
   let i = 1;

@@ -86,6 +86,16 @@ router.put("/profile", async (req, res, next) => {
       weight_start_kg: z.union([z.number().min(30).max(250), z.null()]).optional(),
       goal: z.enum(["Perdre du gras", "Prendre du muscle", "Les deux"]).optional().nullable(),
       experience_level: z.enum(["Débutant", "Intermédiaire", "Avancé"]).optional().nullable(),
+      dietary_profile: z.array(z.string()).optional(),
+      allergies: z.array(z.string()).optional(),
+      wake_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      sleep_time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      work_start: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      work_end: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+      work_type: z.enum(["bureau", "domicile", "variable", "nuit", "sans_emploi"]).optional(),
+      commute_minutes: z.number().int().min(0).max(240).optional(),
+      has_family: z.boolean().optional(),
+      preferred_workout_time: z.enum(["matin", "midi", "soir"]).optional(),
     });
 
     const body = schema.parse(req.body);
@@ -96,6 +106,16 @@ router.put("/profile", async (req, res, next) => {
       heightCm: body.height_cm,
       weightStartKg: body.weight_start_kg,
       goal: body.goal,
+      dietaryProfile: body.dietary_profile,
+      allergies: body.allergies,
+      wakeTime: body.wake_time,
+      sleepTime: body.sleep_time,
+      workStart: body.work_start,
+      workEnd: body.work_end,
+      workType: body.work_type,
+      commuteMinutes: body.commute_minutes,
+      hasFamily: body.has_family,
+      preferredWorkoutTime: body.preferred_workout_time,
     });
 
     if (!updated) return res.status(404).json({ error: "Utilisateur introuvable" });

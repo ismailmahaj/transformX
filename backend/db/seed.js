@@ -1115,6 +1115,134 @@ function getMealsForTemplateDay(templateDayIndex) {
   ];
 }
 
+function getMealsForProgram(mealProgram) {
+  if (mealProgram === "prise_de_masse") {
+    return [
+      {
+        type: "breakfast",
+        name: "Bol Avoine Masse",
+        ingredients: [
+          { name: "Flocons d'avoine", quantity: 150, unit: "g" },
+          { name: "Banane", quantity: 2, unit: "pièce" },
+          { name: "Beurre de cacahuète", quantity: 3, unit: "càs" },
+          { name: "Lait entier", quantity: 300, unit: "ml" },
+          { name: "Protéine (whey)", quantity: 40, unit: "g" },
+        ],
+        recipe: null,
+        prep_time_minutes: 10,
+        difficulty: "Facile",
+        macros: { calories: 900, proteins_g: 55, carbs_g: 110, fats_g: 25 },
+      },
+      {
+        type: "lunch",
+        name: "Riz Poulet Masse",
+        ingredients: [
+          { name: "Riz blanc", quantity: 250, unit: "g" },
+          { name: "Blanc de poulet", quantity: 250, unit: "g" },
+          { name: "Huile d'olive", quantity: 2, unit: "càs" },
+          { name: "Avocat", quantity: 1, unit: "pièce" },
+        ],
+        recipe: null,
+        prep_time_minutes: 25,
+        difficulty: "Facile",
+        macros: { calories: 1100, proteins_g: 70, carbs_g: 130, fats_g: 35 },
+      },
+      {
+        type: "dinner",
+        name: "Bœuf Patate Douce Masse",
+        ingredients: [
+          { name: "Bœuf haché", quantity: 250, unit: "g" },
+          { name: "Patate douce", quantity: 300, unit: "g" },
+          { name: "Beurre", quantity: 20, unit: "g" },
+          { name: "Œufs", quantity: 2, unit: "pièce" },
+        ],
+        recipe: null,
+        prep_time_minutes: 30,
+        difficulty: "Moyen",
+        macros: { calories: 950, proteins_g: 65, carbs_g: 100, fats_g: 40 },
+      },
+      {
+        type: "snack",
+        name: "Shake Masse",
+        ingredients: [
+          { name: "Lait entier", quantity: 500, unit: "ml" },
+          { name: "Protéine (whey)", quantity: 60, unit: "g" },
+          { name: "Flocons d'avoine", quantity: 100, unit: "g" },
+          { name: "Miel", quantity: 2, unit: "càs" },
+        ],
+        recipe: null,
+        prep_time_minutes: 5,
+        difficulty: "Facile",
+        macros: { calories: 800, proteins_g: 55, carbs_g: 90, fats_g: 20 },
+      },
+    ];
+  }
+
+  if (mealProgram === "diabetique") {
+    return [
+      {
+        type: "breakfast",
+        name: "Omelette Légumes",
+        ingredients: [
+          { name: "Œufs", quantity: 3, unit: "pièce" },
+          { name: "Épinards", quantity: 100, unit: "g" },
+          { name: "Poivron", quantity: 1, unit: "pièce" },
+          { name: "Feta", quantity: 30, unit: "g" },
+          { name: "Huile d'olive", quantity: 1, unit: "càs" },
+        ],
+        recipe: null,
+        prep_time_minutes: 15,
+        difficulty: "Facile",
+        macros: { calories: 320, proteins_g: 24, carbs_g: 6, fats_g: 18 },
+      },
+      {
+        type: "lunch",
+        name: "Salade Poulet Avocat",
+        ingredients: [
+          { name: "Blanc de poulet", quantity: 200, unit: "g" },
+          { name: "Avocat", quantity: 1, unit: "pièce" },
+          { name: "Salade verte", quantity: 100, unit: "g" },
+          { name: "Tomates cerises", quantity: 150, unit: "g" },
+          { name: "Citron", quantity: 1, unit: "pièce" },
+        ],
+        recipe: null,
+        prep_time_minutes: 15,
+        difficulty: "Facile",
+        macros: { calories: 420, proteins_g: 38, carbs_g: 12, fats_g: 22 },
+      },
+      {
+        type: "dinner",
+        name: "Saumon Légumes Vapeur",
+        ingredients: [
+          { name: "Saumon", quantity: 200, unit: "g" },
+          { name: "Brocoli", quantity: 300, unit: "g" },
+          { name: "Haricots verts", quantity: 200, unit: "g" },
+          { name: "Citron", quantity: 1, unit: "pièce" },
+        ],
+        recipe: null,
+        prep_time_minutes: 25,
+        difficulty: "Moyen",
+        macros: { calories: 380, proteins_g: 42, carbs_g: 10, fats_g: 18 },
+      },
+      {
+        type: "snack",
+        name: "Noix Fromage Blanc",
+        ingredients: [
+          { name: "Fromage blanc 0%", quantity: 200, unit: "g" },
+          { name: "Noix", quantity: 30, unit: "g" },
+          { name: "Cannelle", quantity: 1, unit: "càc" },
+        ],
+        recipe: null,
+        prep_time_minutes: 5,
+        difficulty: "Facile",
+        macros: { calories: 220, proteins_g: 18, carbs_g: 8, fats_g: 12 },
+      },
+    ];
+  }
+
+  return getMealsForTemplateDay(0);
+}
+
 async function seedWorkouts() {
   let inserted = 0;
   for (let day = 1; day <= 180; day++) {
@@ -1139,35 +1267,45 @@ async function seedWorkouts() {
 
 async function seedMeals() {
   let inserted = 0;
-  for (let day = 1; day <= 180; day++) {
-    const templateIndex = (day - 1) % 7;
-    const meals = getMealsForTemplateDay(templateIndex);
-    for (const m of meals) {
-      const res = await pool.query(
-        `INSERT INTO meals (day_number, type, name, ingredients, recipe, prep_time_minutes, difficulty, macros)
-         VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8::jsonb)
-         ON CONFLICT (day_number, type) DO UPDATE SET
-           name = EXCLUDED.name,
-           ingredients = EXCLUDED.ingredients,
-           recipe = EXCLUDED.recipe,
-           prep_time_minutes = EXCLUDED.prep_time_minutes,
-           difficulty = EXCLUDED.difficulty,
-           macros = EXCLUDED.macros`,
-        [
-          day,
-          m.type,
-          m.name,
-          JSON.stringify(m.ingredients),
-          m.recipe ?? null,
-          m.prep_time_minutes ?? 10,
-          m.difficulty ?? "Facile",
-          JSON.stringify(m.macros ?? {}),
-        ]
-      );
-      inserted += res.rowCount ?? 0;
+  const mealPrograms = ["standard", "prise_de_masse", "diabetique"];
+
+  for (const mealProgram of mealPrograms) {
+    for (let day = 1; day <= 180; day++) {
+      const templateIndex = (day - 1) % 7;
+      const meals = mealProgram === "standard" ? getMealsForTemplateDay(templateIndex) : getMealsForProgram(mealProgram);
+
+      for (const m of meals) {
+        const res = await pool.query(
+          `INSERT INTO meals (day_number, type, meal_program, name, ingredients, recipe, prep_time_minutes, difficulty, macros)
+           VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9::jsonb)
+           ON CONFLICT (day_number, type, meal_program) DO UPDATE SET
+             name = EXCLUDED.name,
+             ingredients = EXCLUDED.ingredients,
+             recipe = EXCLUDED.recipe,
+             prep_time_minutes = EXCLUDED.prep_time_minutes,
+             difficulty = EXCLUDED.difficulty,
+             macros = EXCLUDED.macros`,
+          [
+            day,
+            m.type,
+            mealProgram,
+            m.name,
+            JSON.stringify(m.ingredients),
+            m.recipe ?? null,
+            m.prep_time_minutes ?? 10,
+            m.difficulty ?? "Facile",
+            JSON.stringify(m.macros ?? {}),
+          ]
+        );
+        inserted += res.rowCount ?? 0;
+      }
+
+      if (day % 30 === 0 || day === 180) {
+        console.log(`Seeding meals: programme=${mealProgram} day ${day}...`);
+      }
     }
-    if (day % 20 === 0 || day === 180) console.log(`Seeding day ${day}...`);
   }
+
   return inserted;
 }
 

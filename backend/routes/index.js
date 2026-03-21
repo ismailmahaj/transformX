@@ -9,5 +9,6 @@ module.exports = {
   usersRoutes: require("./users"),
   shoppingRoutes: require("./shopping"),
   coachRoutes: require("./coach"),
+  plannerRoutes: require("./planner"),
 };
 

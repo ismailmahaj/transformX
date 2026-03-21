@@ -12,6 +12,8 @@ interface ProfileUser {
   height_cm: number | null;
   weight_start_kg: number | null;
   goal: string | null;
+  dietary_profile?: string[];
+  allergies?: string[];
   created_at: string;
 }
 
@@ -85,6 +87,7 @@ export default function Profile() {
   const [formStartWeight, setFormStartWeight] = useState<number | "">("");
   const [formGoal, setFormGoal] = useState<GoalOption>("Perdre du gras");
   const [formExperience, setFormExperience] = useState<"Débutant" | "Intermédiaire" | "Avancé">("Débutant");
+  const [formDietaryProfile, setFormDietaryProfile] = useState<string[]>(["standard"]);
 
   useEffect(() => {
     const u = profileQuery.data?.user;
@@ -97,6 +100,9 @@ export default function Profile() {
 
     const g = u.goal as GoalOption | null;
     if (g === "Perdre du gras" || g === "Prendre du muscle" || g === "Les deux") setFormGoal(g);
+
+    const dp = Array.isArray(u.dietary_profile) ? u.dietary_profile : [];
+    setFormDietaryProfile(dp.length ? dp : ["standard"]);
 
     const xp = s.xp_total ?? 0;
     if (xp >= 1500) setFormExperience("Avancé");
@@ -111,6 +117,7 @@ export default function Profile() {
       weight_start_kg: number | null;
       goal: GoalOption;
       experience_level: "Débutant" | "Intermédiaire" | "Avancé";
+      dietary_profile: string[];
     }) => api.put("/users/profile", payload),
     onSuccess: async () => {
       setSuccessToast("Profil mis à jour ✅");
@@ -166,6 +173,29 @@ export default function Profile() {
     ],
     [workoutsCompleted, currentStreak, currentDay, mealsDaysLogged]
   );
+
+  const dietaryOptions: Array<{ key: string; icon: string; title: string; description: string }> = [
+    { key: "diabetique", icon: "🩺", title: "Diabétique", description: "Programme low glycémique" },
+    { key: "vegetarien", icon: "🌱", title: "Végétarien", description: "Sans viande" },
+    { key: "vegan", icon: "🌿", title: "Vegan", description: "Sans produits animaux" },
+    { key: "sans_gluten", icon: "🌾", title: "Sans Gluten", description: "Intolérance au gluten" },
+    { key: "sans_lactose", icon: "🥛", title: "Sans Lactose", description: "Intolérance au lactose" },
+    { key: "hypertension", icon: "💊", title: "Hypertension", description: "Faible en sel" },
+    { key: "prise_de_masse", icon: "💪", title: "Prise de masse", description: "Recettes hypercaloriques" },
+    { key: "seche", icon: "🔥", title: "Sèche", description: "Low carb, haute protéine" },
+    { key: "standard", icon: "✅", title: "Aucune restriction", description: "Programme standard" },
+  ];
+
+  const toggleDietary = (key: string) => {
+    setFormDietaryProfile((prev) => {
+      if (key === "standard") return ["standard"];
+
+      const withoutStandard = prev.filter((k) => k !== "standard");
+      const exists = withoutStandard.includes(key);
+      const next = exists ? withoutStandard.filter((k) => k !== key) : [...withoutStandard, key];
+      return next.length ? next : ["standard"];
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] pb-24">
@@ -268,6 +298,7 @@ export default function Profile() {
                     weight_start_kg: formStartWeight === "" ? null : Number(formStartWeight),
                     goal: formGoal,
                     experience_level: formExperience,
+                    dietary_profile: formDietaryProfile,
                   });
                 }}
                 className="space-y-4"
@@ -334,6 +365,37 @@ export default function Profile() {
                     <option value="Avancé">Avancé</option>
                   </select>
                 </label>
+
+                <section className="rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] p-4">
+                  <h3 className="text-sm font-semibold text-white mb-2">As-tu des restrictions alimentaires ?</h3>
+                  <p className="text-xs text-gray-400 mb-3">Pour personnaliser tes recettes</p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {dietaryOptions.map((opt) => {
+                      const selected = formDietaryProfile.includes(opt.key);
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => toggleDietary(opt.key)}
+                          className={`text-left rounded-xl border p-3 transition-all ${
+                            selected
+                              ? "border-primary/50 bg-primary/10 shadow-[0_0_0_4px_rgba(249,115,22,0.10)]"
+                              : "border-[#1a1a1a] bg-[#0f0f0f] hover:border-[#2a2a2a]"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className="text-xl leading-none">{opt.icon}</div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-white truncate">{opt.title}</div>
+                              <div className="text-xs text-gray-400 mt-1">{opt.description}</div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
 
                 <button type="submit" disabled={updateMutation.isPending} className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
                   {updateMutation.isPending ? "Enregistrement..." : "Enregistrer les modifications"}

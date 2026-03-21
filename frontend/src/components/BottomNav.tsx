@@ -6,6 +6,7 @@ const NAV_ITEMS: Array<{ to: string; label: string; icon?: string }> = [
   { to: "/nutrition", label: "Nutrition" },
   { to: "/shopping", label: "Courses", icon: "🛒" },
   { to: "/coach", label: "Coach", icon: "🤖" },
+  { to: "/planner", label: "Planning", icon: "📅" },
   { to: "/progress", label: "Progression" },
   { to: "/profile", label: "Profil" },
 ];

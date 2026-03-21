@@ -4,6 +4,7 @@ const { z } = require("zod");
 const { getWorkoutByDay } = require("../db/queries/workouts");
 const { getUserById } = require("../db/queries/users");
 const { upsertUserLog, getUserLogByDate } = require("../db/queries/userLogs");
+const { getVideoId } = require("../db/exerciseVideos");
 
 const router = express.Router();
 
@@ -35,13 +36,28 @@ async function getTodayDayNumberAndGoalType(userId) {
   return { dayNumber, goalType: goalToGoalType(user.goal) };
 }
 
+function enrichWorkoutWithVideos(workout) {
+  if (!workout || !Array.isArray(workout.exercises)) return workout;
+  return {
+    ...workout,
+    exercises: workout.exercises.map((ex) => {
+      const videoId = getVideoId(ex?.name);
+      return {
+        ...ex,
+        video_id: videoId ?? null,
+        youtube_url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : null,
+      };
+    }),
+  };
+}
+
 router.get("/", async (req, res, next) => {
   try {
     const userId = req.user?.userId;
     const today = await getTodayDayNumberAndGoalType(userId);
     if (!today) return res.status(404).json({ error: "User not found" });
 
-    const workout = await getWorkoutByDay(today.dayNumber, today.goalType);
+    const workout = enrichWorkoutWithVideos(await getWorkoutByDay(today.dayNumber, today.goalType));
     if (!workout)
       return res.status(404).json({ error: "Workout not found for today", day_number: today.dayNumber });
 
@@ -61,7 +77,7 @@ router.get("/:day", async (req, res, next) => {
     if (!user) return res.status(404).json({ error: "User not found" });
     const goalType = goalToGoalType(user.goal);
 
-    const workout = await getWorkoutByDay(day, goalType);
+    const workout = enrichWorkoutWithVideos(await getWorkoutByDay(day, goalType));
     if (!workout) return res.status(404).json({ error: "Workout not found" });
 
     return res.json({ workout });

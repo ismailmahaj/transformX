@@ -7,6 +7,7 @@ import { getCurrentDay, getPhase } from "../lib/dayUtils";
 import { ExerciseCard } from "../components/ExerciseCard";
 import { WorkoutTimer } from "../components/WorkoutTimer";
 import { BottomNav } from "../components/BottomNav";
+import { VideoModal } from "../components/VideoModal";
 import type { Workout, WorkoutExercise } from "../types/api";
 
 interface WorkoutResponse {
@@ -37,6 +38,8 @@ export default function Workout() {
 
   const [completedExercises, setCompletedExercises] = useState<Set<number>>(new Set());
   const [completeSuccess, setCompleteSuccess] = useState(false);
+  const [isVideoOpen, setIsVideoOpen] = useState(false);
+  const [selectedExercise, setSelectedExercise] = useState<WorkoutExercise | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["workouts", day],
@@ -72,6 +75,12 @@ export default function Workout() {
       else next.add(index);
       return next;
     });
+  };
+
+  const openVideo = (exercise: WorkoutExercise) => {
+    if (!exercise.video_id) return;
+    setSelectedExercise(exercise);
+    setIsVideoOpen(true);
   };
 
   const workout = data?.workout;
@@ -201,6 +210,7 @@ export default function Workout() {
                     index={i + 1}
                     checked={completedExercises.has(i)}
                     onToggle={() => toggleExercise(i)}
+                    onOpenVideo={() => openVideo(ex)}
                   />
                 </li>
               ))}
@@ -227,6 +237,12 @@ export default function Workout() {
           </>
         )}
       </main>
+
+      <VideoModal
+        isOpen={isVideoOpen}
+        onClose={() => setIsVideoOpen(false)}
+        exercise={selectedExercise}
+      />
 
       <BottomNav />
     </div>

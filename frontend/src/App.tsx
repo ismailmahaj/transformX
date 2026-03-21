@@ -17,6 +17,8 @@ import Profile from "./pages/Profile";
 import RecipeDetail from "./pages/RecipeDetail";
 import Shopping from "./pages/Shopping";
 import Coach from "./pages/Coach";
+import Planner from "./pages/Planner";
+import PlannerSettings from "./pages/PlannerSettings";
 import BodyAnalysis from "./pages/BodyAnalysis";
 import Onboarding from "./pages/Onboarding";
 import { InstallPWA } from "./components/InstallPWA";
@@ -87,6 +89,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Shopping />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/planner"
+        element={
+          <ProtectedRoute>
+            <Planner />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/planner/settings"
+        element={
+          <ProtectedRoute>
+            <PlannerSettings />
           </ProtectedRoute>
         }
       />

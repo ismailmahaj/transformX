@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useMemo } from "react";
 import { useAuthStore } from "../store/authStore";
 import { DayCounter } from "../components/DayCounter";
 import { TodayWorkout } from "../components/TodayWorkout";
@@ -7,6 +8,26 @@ import { StreakBadge } from "../components/StreakBadge";
 import { QuickStats } from "../components/QuickStats";
 
 export default function Dashboard() {
+  const userId = useAuthStore((s) => s.user?.id);
+  const plannerCacheKey = useMemo(() => {
+    const d = new Date();
+    return `planner_${d.getFullYear()}_${d.getMonth() + 1}_${userId ?? "anonymous"}`;
+  }, [userId]);
+  const plannerData = useMemo(() => {
+    const raw = localStorage.getItem(plannerCacheKey);
+    if (!raw) return null;
+    try {
+      return (JSON.parse(raw) as { data?: { days?: Array<{ date: string; emoji: string; focus_short: string }>; stats?: { seances_prevues: number; jours_repos: number; meal_prep: number; courses: number } } }).data ?? null;
+    } catch {
+      return null;
+    }
+  }, [plannerCacheKey]);
+  const plannerPreview = useMemo(() => {
+    if (!plannerData?.days) return [];
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return plannerData.days.filter((d) => d.date >= todayIso).slice(0, 3);
+  }, [plannerData]);
+
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
@@ -67,6 +88,38 @@ export default function Dashboard() {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium hover:bg-primary/30 transition-colors"
               >
                 Poser une question →
+              </Link>
+            </div>
+          </div>
+          <div>
+            <div className="rounded-xl border border-[#1a1a1a] bg-[#0f0f0f] p-5">
+              <h2 className="text-lg font-semibold text-white mb-1">Planning du Jour 📅</h2>
+              {plannerData?.stats ? (
+                <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded bg-[#0a0a0a] px-2 py-1 text-gray-300">Séances: {plannerData.stats.seances_prevues}</div>
+                  <div className="rounded bg-[#0a0a0a] px-2 py-1 text-gray-300">Repos: {plannerData.stats.jours_repos}</div>
+                </div>
+              ) : null}
+              {plannerPreview.length === 0 ? (
+                <p className="text-sm text-gray-500 mb-3">Aucun planning généré pour aujourd’hui.</p>
+              ) : (
+                <ul className="space-y-1 mb-3">
+                  {plannerPreview.map((b, idx) => (
+                    <li key={`${b.date}-${idx}`} className="text-sm text-gray-300">
+                      <span className="text-gray-500 mr-2">
+                        {new Date(b.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" })}
+                      </span>
+                      <span className="mr-1">{b.emoji ?? "•"}</span>
+                      {b.focus_short}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link
+                to="/planner"
+                className="inline-flex items-center gap-2 rounded-lg bg-primary/20 text-primary px-4 py-2.5 text-sm font-medium hover:bg-primary/30 transition-colors"
+              >
+                Voir le planning complet →
               </Link>
             </div>
           </div>
