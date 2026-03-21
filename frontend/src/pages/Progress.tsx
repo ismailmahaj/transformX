@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { useAuthStore } from "../store/authStore";
 import { getCurrentDay, getPhase } from "../lib/dayUtils";
 import { WeightChart } from "../components/WeightChart";
+import { ChartErrorBoundary } from "../components/ChartErrorBoundary";
 import { MeasurementsForm, type MeasurementFields } from "../components/MeasurementsForm";
 import { PhotoUpload, type ProgressPhoto } from "../components/PhotoUpload";
 import { ProgressStats } from "../components/ProgressStats";
@@ -203,7 +204,9 @@ export default function Progress() {
             <span className="text-sm text-gray-500">{isoToday()}</span>
           </div>
 
-          <WeightChart data={chartData} startWeight={START_WEIGHT} goalWeight={GOAL_WEIGHT} />
+          <ChartErrorBoundary>
+            <WeightChart data={chartData} startWeight={START_WEIGHT} goalWeight={GOAL_WEIGHT} />
+          </ChartErrorBoundary>
 
           <form onSubmit={handleSaveWeight} className="rounded-xl border border-[#1a1a1a] bg-[#0f0f0f] p-4">
             <div className="flex flex-col sm:flex-row gap-3 sm:items-end sm:justify-between">

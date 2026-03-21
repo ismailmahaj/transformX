@@ -35,8 +35,8 @@ export function WeightChart({ data, startWeight, goalWeight }: WeightChartProps)
 
   return (
     <div className="rounded-xl border border-[#1a1a1a] bg-[#0f0f0f] p-4">
-      <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="h-[200px] w-full min-w-0">
+        <ResponsiveContainer width="100%" height={200} minWidth={0}>
           <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid stroke="#1a1a1a" strokeDasharray="3 3" />
             <XAxis
