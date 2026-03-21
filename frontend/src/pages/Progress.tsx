@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
@@ -11,6 +11,15 @@ import { PhotoUpload, type ProgressPhoto } from "../components/PhotoUpload";
 import { ProgressStats } from "../components/ProgressStats";
 import { BottomNav } from "../components/BottomNav";
 import type { ProgressEntry, UserLog, Streak } from "../types/api";
+
+const STREAK_PLACEHOLDER: Streak = {
+  id: "",
+  user_id: "",
+  current_streak: 0,
+  longest_streak: 0,
+  last_log_date: null,
+  updated_at: "",
+};
 
 const START_WEIGHT = 81.9;
 const GOAL_WEIGHT = 67;
@@ -42,6 +51,13 @@ function motivationalMessage(day: number, lostKg: number) {
 }
 
 export default function Progress() {
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsReady(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const day = getCurrentDay(user?.created_at);
@@ -55,6 +71,7 @@ export default function Progress() {
       const { data } = await api.get<ProgressResponse>("/progress");
       return data.progress;
     },
+    placeholderData: [] as ProgressEntry[],
   });
 
   const photosQuery = useQuery({
@@ -63,6 +80,7 @@ export default function Progress() {
       const { data } = await api.get<PhotosResponse>("/progress/photos");
       return data.photos;
     },
+    placeholderData: [] as ProgressPhoto[],
   });
 
   const logsQuery = useQuery({
@@ -71,6 +89,7 @@ export default function Progress() {
       const { data } = await api.get<LogsResponse>("/logs");
       return data.logs;
     },
+    placeholderData: [] as UserLog[],
   });
 
   const streakQuery = useQuery({
@@ -79,6 +98,7 @@ export default function Progress() {
       const { data } = await api.get<StreakResponse>("/streaks");
       return data.streak;
     },
+    placeholderData: STREAK_PLACEHOLDER,
   });
 
   const saveProgressMutation = useMutation({
@@ -136,6 +156,14 @@ export default function Progress() {
   };
 
   const photos = photosQuery.data ?? [];
+
+  if (!isReady) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a]">
+        <div className="text-gray-500">Chargement...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] pb-24">
