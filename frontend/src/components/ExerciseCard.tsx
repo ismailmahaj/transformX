@@ -6,6 +6,8 @@ interface ExerciseCardProps {
   checked: boolean;
   onToggle: () => void;
   onOpenVideo?: () => void;
+  /** Aperçu semaine : pas de case à cocher */
+  hideCheckbox?: boolean;
 }
 
 function formatSetsReps(exercise: WorkoutExercise): string {
@@ -14,7 +16,7 @@ function formatSetsReps(exercise: WorkoutExercise): string {
   return `${sets} × ${reps}`;
 }
 
-export function ExerciseCard({ exercise, index, checked, onToggle, onOpenVideo }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, index, checked, onToggle, onOpenVideo, hideCheckbox }: ExerciseCardProps) {
   const name = exercise.name ?? "Exercice";
   const restSec = exercise.rest_seconds ?? 0;
   const setsReps = formatSetsReps(exercise);
@@ -56,26 +58,28 @@ export function ExerciseCard({ exercise, index, checked, onToggle, onOpenVideo }
             )}
           </div>
         </div>
-        <label className="flex items-center gap-2 shrink-0 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={onToggle}
-            className="sr-only peer"
-            aria-label={`Marquer ${name} comme fait`}
-          />
-          <span
-            className={`
+        {!hideCheckbox ? (
+          <label className="flex items-center gap-2 shrink-0 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={onToggle}
+              className="sr-only peer"
+              aria-label={`Marquer ${name} comme fait`}
+            />
+            <span
+              className={`
               flex h-8 w-8 items-center justify-center rounded-lg border-2 transition-all duration-200
               ${checked
                 ? "border-green-500 bg-green-500/20 text-green-400"
                 : "border-gray-600 text-transparent hover:border-gray-500"
               }
             `}
-          >
-            {checked ? "✓" : ""}
-          </span>
-        </label>
+            >
+              {checked ? "✓" : ""}
+            </span>
+          </label>
+        ) : null}
       </div>
     </div>
   );

@@ -51,6 +51,116 @@ function enrichWorkoutWithVideos(workout) {
   };
 }
 
+function getDayNameFr(dayIndex) {
+  const days = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+  return days[dayIndex];
+}
+
+function localIsoDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function classifyDayType(workout, calendarDate) {
+  if (!workout || !workout.is_rest_day) return "training";
+  const wd = calendarDate.getDay();
+  if (wd === 2 || wd === 4) return "active_rest";
+  return "rest";
+}
+
+function computeWeekSummary(weekPayload) {
+  let seances = 0;
+  let totalExercices = 0;
+  let joursRepos = 0;
+
+  for (const d of weekPayload) {
+    const w = d.workout;
+    if (!w) {
+      joursRepos += 1;
+      continue;
+    }
+    if (w.is_rest_day) {
+      joursRepos += 1;
+      continue;
+    }
+    seances += 1;
+    const n = Array.isArray(w.exercises) ? w.exercises.length : 0;
+    totalExercices += n;
+  }
+
+  let intensite_moyenne = "moyenne";
+  if (seances === 0) {
+    intensite_moyenne = "basse";
+  } else {
+    const avg = totalExercices / seances;
+    if (avg >= 6) intensite_moyenne = "haute";
+    else if (avg >= 4) intensite_moyenne = "moyenne";
+    else intensite_moyenne = "basse";
+  }
+
+  return {
+    seances_cette_semaine: seances,
+    volume_total_exercices: totalExercices,
+    jours_repos: joursRepos,
+    intensite_moyenne,
+  };
+}
+
+router.get("/week", async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    const user = await getUserById(userId);
+    if (!user) return res.status(404).json({ error: "Utilisateur introuvable" });
+
+    const goalType = goalToGoalType(user.goal);
+    const createdAt = new Date(user.created_at);
+    const today = new Date();
+    const offset = daysBetweenUtc(createdAt, today);
+    const currentDay = Math.min(180, Math.max(1, offset + 1));
+
+    today.setHours(0, 0, 0, 0);
+    const todayIso = localIsoDate(today);
+
+    const week = [];
+
+    for (let i = 0; i < 7; i++) {
+      const dayNumber = Math.min(180, currentDay + i);
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dateIso = localIsoDate(date);
+
+      // eslint-disable-next-line no-await-in-loop
+      const raw = await getWorkoutByDay(dayNumber, goalType);
+      const workout = raw ? enrichWorkoutWithVideos(raw) : null;
+
+      const dayType = workout ? classifyDayType(workout, date) : "rest";
+
+      week.push({
+        day_number: dayNumber,
+        date: dateIso,
+        day_name: getDayNameFr(date.getDay()),
+        is_today: dateIso === todayIso,
+        is_past: dateIso < todayIso,
+        day_type: dayType,
+        workout,
+      });
+    }
+
+    const summary = computeWeekSummary(week);
+
+    return res.json({
+      week,
+      current_day: currentDay,
+      goal_type: goalType,
+      summary,
+    });
+  } catch (err) {
+    return next(err);
+  }
+});
+
 router.get("/", async (req, res, next) => {
   try {
     const userId = req.user?.userId;

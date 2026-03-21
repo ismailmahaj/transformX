@@ -20,6 +20,7 @@ import Coach from "./pages/Coach";
 import Planner from "./pages/Planner";
 import PlannerSettings from "./pages/PlannerSettings";
 import BodyAnalysis from "./pages/BodyAnalysis";
+import WodScanner from "./pages/WodScanner";
 import Onboarding from "./pages/Onboarding";
 import { InstallPWA } from "./components/InstallPWA";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -73,6 +74,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Workout />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/wod-scanner"
+        element={
+          <ProtectedRoute>
+            <WodScanner />
           </ProtectedRoute>
         }
       />

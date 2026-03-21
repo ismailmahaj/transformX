@@ -5,10 +5,17 @@ const Anthropic = require("@anthropic-ai/sdk");
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+const sharp = require("sharp");
+
 const { getUserById } = require("../db/queries/users");
 const { getUserTotals } = require("../db/queries/userLogs");
 const { getStreak } = require("../db/queries/streaks");
 const { getLatestProgress } = require("../db/queries/userProgress");
+const {
+  upsertScannedWod,
+  getScannedWodByUserAndDate,
+  completeScannedWod,
+} = require("../db/queries/scannedWods");
 
 const router = express.Router();
 
@@ -154,8 +161,6 @@ router.post("/analyze-body", upload.single("image"), async (req, res, next) => {
 
     const { currentDay } = computeDayAndPhaseFromCreatedAt(user.created_at);
 
-    const sharp = require("sharp");
-
     // Resize and compress image to max 1500px and quality 80
     const compressedBuffer = await sharp(req.file.buffer)
       .resize({ width: 1500, height: 1500, fit: "inside", withoutEnlargement: true })
@@ -239,6 +244,223 @@ Format de sortie JSON (obligatoire) :
     }
 
     return res.json({ analysis: validated.data });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+const saveWodSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  wod_data: z.any(),
+  image_url: z.union([z.string(), z.null()]).optional(),
+});
+
+const completeWodSchema = z.object({
+  score: z.string().max(500).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+router.post("/scan-wod", upload.single("image"), async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: "Non authentifié" });
+
+    if (!req.file) {
+      return res.status(400).json({ error: "Aucune image fournie" });
+    }
+
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: "Format non supporté. Utilise JPG, PNG ou WebP." });
+    }
+
+    if (req.file.size > 10 * 1024 * 1024) {
+      return res.status(400).json({ error: "Image trop grande. Maximum 10MB." });
+    }
+
+    const compressed = await sharp(req.file.buffer)
+      .resize({ width: 1500, height: 1500, fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+
+    const base64Image = compressed.toString("base64");
+
+    const partialScanFallback = () =>
+      res.json({
+        wod: {
+          nom: "WOD scanné",
+          format: "For Time",
+          duree_estimee_minutes: 30,
+          echauffement: "",
+          lisibilite: "partielle",
+          exercices: [],
+          transitions: [],
+          notes_generales: "Lecture partielle — vérifie et complète manuellement",
+          niveau: "intermédiaire",
+          muscles_cibles: ["full body"],
+        },
+        warning: "Lecture partielle — tu peux modifier les exercices manuellement",
+      });
+
+    const prompt = `Tu es un expert CrossFit. 
+Analyse cette photo d'un tableau blanc de salle CrossFit.
+Même si l'image est floue ou en angle, essaie de lire le maximum.
+
+IMPORTANT: Essaie toujours de retourner quelque chose, même partiel.
+Si tu ne peux pas lire un mot, mets "?" à la place.
+Si tu vois des chiffres, des noms d'exercices CrossFit connus, utilise-les.
+
+Exercices CrossFit courants à reconnaître:
+Burpees, Wall Balls, Double Unders, Pull-ups, Box Jumps,
+Hang Power Clean (HPC), Push Jerk, Back Squat, Muscle Up (MU),
+Kettlebell Swings, Thrusters, Deadlift, Row, Run
+
+Réponds UNIQUEMENT en JSON valide:
+{
+  "nom": "WOD du jour",
+  "format": "For Time",
+  "duree_estimee_minutes": 30,
+  "echauffement": "1500M cardio / 90 Cal",
+  "lisibilite": "bonne / moyenne / partielle",
+  "exercices": [
+    {
+      "nom": "Burpees",
+      "series": "30-20-10",
+      "repetitions": null,
+      "poids": null,
+      "note": null
+    }
+  ],
+  "transitions": [],
+  "notes_generales": "",
+  "niveau": "intermédiaire",
+  "muscles_cibles": ["full body"]
+}
+
+Réponds UNIQUEMENT en JSON, jamais de texte avant ou après.`;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1500,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/jpeg",
+                data: base64Image,
+              },
+            },
+            { type: "text", text: prompt },
+          ],
+        },
+      ],
+    });
+
+    const text = response?.content?.[0]?.text;
+    if (typeof text !== "string" || !text.trim()) {
+      return partialScanFallback();
+    }
+
+    const clean = text.replace(/```json|```/g, "").trim();
+    let wod;
+    try {
+      wod = JSON.parse(clean);
+    } catch {
+      return partialScanFallback();
+    }
+
+    const normalized = {
+      nom: typeof wod.nom === "string" ? wod.nom : "WOD du jour",
+      format: typeof wod.format === "string" ? wod.format : "autre",
+      duree_estimee_minutes: typeof wod.duree_estimee_minutes === "number" ? wod.duree_estimee_minutes : null,
+      echauffement: wod.echauffement ?? "",
+      lisibilite: typeof wod.lisibilite === "string" ? wod.lisibilite : "moyenne",
+      exercices: Array.isArray(wod.exercices) ? wod.exercices : [],
+      transitions: Array.isArray(wod.transitions) ? wod.transitions : [],
+      notes_generales: wod.notes_generales ?? "",
+      niveau: wod.niveau ?? "",
+      muscles_cibles: Array.isArray(wod.muscles_cibles) ? wod.muscles_cibles : [],
+    };
+
+    return res.json({ wod: normalized });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.post("/save-wod", async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: "Non authentifié" });
+
+    const parsed = saveWodSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Données invalides", details: parsed.error.errors });
+    }
+
+    const { date, wod_data: rawWod, image_url } = parsed.data;
+    if (typeof rawWod !== "object" || rawWod === null || Array.isArray(rawWod)) {
+      return res.status(400).json({ error: "wod_data doit être un objet" });
+    }
+
+    const row = await upsertScannedWod(userId, {
+      date,
+      wodData: rawWod,
+      imageUrl: image_url && String(image_url).trim() ? String(image_url).trim() : null,
+    });
+
+    return res.json({ scanned_wod: row });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.get("/wod/:date", async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: "Non authentifié" });
+
+    const date = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "Date invalide (AAAA-MM-JJ)" });
+    }
+
+    const row = await getScannedWodByUserAndDate(userId, date);
+    return res.json({ scanned_wod: row });
+  } catch (err) {
+    return next(err);
+  }
+});
+
+router.put("/wod/:date/complete", async (req, res, next) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) return res.status(401).json({ error: "Non authentifié" });
+
+    const date = req.params.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: "Date invalide (AAAA-MM-JJ)" });
+    }
+
+    const parsed = completeWodSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Données invalides", details: parsed.error.errors });
+    }
+
+    const row = await completeScannedWod(userId, date, {
+      score: parsed.data.score ?? null,
+      notes: parsed.data.notes ?? null,
+    });
+
+    if (!row) {
+      return res.status(404).json({ error: "Aucun WOD scanné pour cette date" });
+    }
+
+    return res.json({ scanned_wod: row });
   } catch (err) {
     return next(err);
   }

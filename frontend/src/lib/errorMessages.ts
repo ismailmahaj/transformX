@@ -20,6 +20,9 @@ export function getFriendlyError(error: unknown): string {
   if (msg.includes("Limite IA atteinte")) {
     return "Limite IA atteinte. Réessaie dans 1 heure.";
   }
+  if (msg.includes("illisible") || msg.includes("meilleure lumière")) {
+    return "Image illisible, essaie avec meilleure lumière.";
+  }
   if (msg.includes("jwt expired") || msg.includes("expired token")) {
     return "Session expirée. Reconnecte-toi.";
   }

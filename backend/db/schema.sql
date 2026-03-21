@@ -180,4 +180,18 @@ CREATE TABLE IF NOT EXISTS daily_targets (
   UNIQUE(user_id, date)
 );
 
+-- WOD scanné (tableau blanc CrossFit)
+CREATE TABLE IF NOT EXISTS scanned_wods (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  wod_data JSONB NOT NULL,
+  image_url TEXT,
+  completed BOOLEAN NOT NULL DEFAULT FALSE,
+  score TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(user_id, date)
+);
+
 COMMIT;

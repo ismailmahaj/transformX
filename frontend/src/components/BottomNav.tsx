@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 const NAV_ITEMS: Array<{ to: string; label: string; icon?: string }> = [
   { to: "/dashboard", label: "Tableau de bord" },
   { to: "/workout", label: "Entraînement" },
+  { to: "/wod-scanner", label: "Scanner", icon: "📸" },
   { to: "/nutrition", label: "Nutrition" },
   { to: "/shopping", label: "Courses", icon: "🛒" },
   { to: "/coach", label: "Coach", icon: "🤖" },
